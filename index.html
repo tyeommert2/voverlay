@@ -271,8 +271,8 @@
       const base = 'https://api.henrikdev.xyz/valorant/v3';
       const headers = { 'Authorization': 'HDEV-add893c4-d264-419a-840b-b14d486d5b38' };
       const [mmrRes, matchRes] = await Promise.all([
-        fetch(`${base}/mmr/${region}/pc/${encodeURIComponent(name)}/${encodeURIComponent(tag)}`, { headers }),
-        fetch(`https://api.henrikdev.xyz/valorant/v1/mmr-history/${region}/${encodeURIComponent(name)}/${encodeURIComponent(tag)}`, { headers })
+        fetch(`https://api.henrikdev.xyz/valorant/v3/mmr/${region}/pc/${encodeURIComponent(name)}/${encodeURIComponent(tag)}`, { headers }),
+        fetch(`https://api.henrikdev.xyz/valorant/v1/stored-matches/${region}/${encodeURIComponent(name)}/${encodeURIComponent(tag)}`, { headers })
       ]);
       if (!mmrRes.ok) { setLiveState('error'); return; }
       const mmr   = await mmrRes.json();
@@ -310,9 +310,12 @@
     const history = matchHistory?.data || [];
     const recent  = history.slice(0, 5).reverse();
 
+    // KD from stored matches — stats.kills / stats.deaths per match
     let kills = 0, deaths = 0, validMatches = 0;
     recent.forEach(m => {
-      if (m.kills != null && m.deaths != null) { kills += m.kills; deaths += m.deaths; validMatches++; }
+      const k = m.stats?.kills;
+      const d = m.stats?.deaths;
+      if (k != null && d != null) { kills += k; deaths += d; validMatches++; }
     });
     const kd = validMatches > 0 ? (kills / Math.max(1, deaths)).toFixed(2) : '—';
     document.getElementById('kd-num').innerHTML = `${kd}<span> k/d</span>`;
@@ -321,9 +324,17 @@
       document.getElementById('kd-fill').style.width = kdPct + '%';
     }, 300);
 
+    // Streak — use teams score to determine win/loss per match
     const pipsEl = document.getElementById('pips');
     pipsEl.innerHTML = '';
-    const wins = recent.map(m => (m.movement || '').toLowerCase().includes('increase') || (m.rr_change || 0) > 0);
+    const wins = recent.map(m => {
+      const team  = m.stats?.team?.toLowerCase();
+      const red   = m.teams?.red ?? 0;
+      const blue  = m.teams?.blue ?? 0;
+      if (team === 'red')  return red > blue;
+      if (team === 'blue') return blue > red;
+      return false;
+    });
     wins.forEach((win, i) => {
       const p = document.createElement('div');
       p.className = `pip ${win ? 'w' : 'l'}`;

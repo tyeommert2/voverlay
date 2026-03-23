@@ -271,7 +271,7 @@
       const base = 'https://api.henrikdev.xyz/valorant/v3';
       const headers = { 'Authorization': 'HDEV-add893c4-d264-419a-840b-b14d486d5b38' };
       const [mmrRes, matchRes] = await Promise.all([
-        fetch(`${base}/mmr/${region}/${encodeURIComponent(name)}/${encodeURIComponent(tag)}`, { headers }),
+        fetch(`${base}/mmr/${region}/pc/${encodeURIComponent(name)}/${encodeURIComponent(tag)}`, { headers }),
         fetch(`https://api.henrikdev.xyz/valorant/v1/mmr-history/${region}/${encodeURIComponent(name)}/${encodeURIComponent(tag)}`, { headers })
       ]);
       if (!mmrRes.ok) { setLiveState('error'); return; }
@@ -286,16 +286,19 @@
 
   // ── Render ─────────────────────────────────────────────────────
   function renderOverlay(mmr, matchHistory) {
-    const current = mmr?.data?.current_data || mmr?.data || {};
-    const tier    = (current.currenttierpatched || current.rank || 'Unranked').replace(/\s\d+$/, '').trim();
-    const tierNum = (current.currenttierpatched || '').match(/\d+$/)?.[0];
-    const rr      = current.ranking_in_tier ?? current.elo ?? 0;
+    const current = mmr?.data?.current || mmr?.data?.current_data || mmr?.data || {};
+    const tier    = current?.tier?.name || 'Unranked';
+    const rr      = current?.rr ?? 0;
 
-    document.getElementById('rank-tier').textContent = tier;
-    document.getElementById('rank-sub').textContent  = tierNum ? `Rank ${tierNum}` : (rr > 0 ? '' : 'Unranked');
+    const tierParts = tier.split(' ');
+    const tierName  = tierParts.slice(0, -1).join(' ') || tier;
+    const tierNum   = tierParts.length > 1 ? tierParts[tierParts.length - 1] : null;
+
+    document.getElementById('rank-tier').textContent = tierName;
+    document.getElementById('rank-sub').textContent  = tierNum ? `Rank ${tierNum}` : '';
     document.getElementById('rr-num').innerHTML      = `${rr}<span> rr</span>`;
 
-    const tierKey = tier.toLowerCase().replace(/\s+\d+$/, '').trim();
+    const tierKey = tierName.toLowerCase().trim();
     const colors  = GEM_COLORS[tierKey] || GEM_COLORS.immortal;
     document.getElementById('gs1').setAttribute('stop-color', colors[0]);
     document.getElementById('gs2').setAttribute('stop-color', colors[1]);

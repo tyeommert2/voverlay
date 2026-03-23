@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Valorant Rank Overlay</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --accent: #c8a0ff;
+    --accent2: #6ed8c8;
+    --win: #4dffc0;
+    --loss: #ff5577;
+    --text: rgba(255,255,255,0.92);
+    --muted: rgba(255,255,255,0.38);
+    --card: rgba(0,0,0,0.88);
+    --border: rgba(255,255,255,0.10);
+    --shine: rgba(255,255,255,0.16);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: transparent;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    min-height: 100vh;
+    padding: 0 18px;
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  /* ── OVERLAY CARD ── */
+  .overlay {
+    width: 224px;
+    display: block;
+    animation: enter 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  @keyframes enter {
+    from { opacity: 0; transform: translateX(-20px) scale(0.97); }
+    to   { opacity: 1; transform: none; }
+  }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    padding: 16px 16px 14px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 15%; right: 35%;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--shine) 40%, transparent);
+  }
+
+  .live {
+    position: absolute;
+    top: 12px; right: 13px;
+    display: flex; align-items: center; gap: 5px;
+    cursor: pointer;
+  }
+  .live-dot {
+    width: 5px; height: 5px;
+    background: var(--accent);
+    border-radius: 50%;
+    animation: pulse 1.8s ease-in-out infinite;
+  }
+  .live-dot.fetching { background: var(--accent2); animation: spin 1s linear infinite; }
+  .live-dot.error    { background: var(--loss); animation: none; }
+
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.35} }
+  @keyframes spin  { 0%{opacity:1} 50%{opacity:0.3} 100%{opacity:1} }
+
+  .live-label { font-size: 9px; letter-spacing: 1.5px; color: var(--muted); text-transform: uppercase; }
+
+  .rank-row { display: flex; align-items: center; gap: 12px; margin-bottom: 13px; }
+
+  .rank-gem {
+    width: 50px; height: 50px; flex-shrink: 0;
+    filter: drop-shadow(0 0 7px rgba(200,160,255,0.45));
+    animation: gemglow 4s ease-in-out infinite;
+    transition: all 0.5s;
+  }
+
+  @keyframes gemglow {
+    0%,100% { filter: drop-shadow(0 0 6px rgba(200,160,255,0.4)); }
+    50%      { filter: drop-shadow(0 0 14px rgba(110,216,200,0.6)); }
+  }
+
+  .rank-labels { flex: 1; }
+
+  .rank-tier {
+    font-family: 'Syne', sans-serif;
+    font-size: 19px;
+    font-weight: 800;
+    background: linear-gradient(120deg, #fff 20%, var(--accent) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    line-height: 1;
+  }
+
+  .rank-sub {
+    font-size: 10px; font-weight: 500;
+    color: var(--muted); letter-spacing: 2px;
+    text-transform: uppercase; margin-top: 3px;
+  }
+
+  hr { border: none; height: 1px; background: var(--border); margin-bottom: 11px; }
+
+  .stat-row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+
+  .stat-tag {
+    font-size: 9px; letter-spacing: 2px;
+    text-transform: uppercase; color: var(--muted);
+    flex-shrink: 0; width: 18px;
+  }
+
+  .bar-track {
+    flex: 1; height: 3px;
+    background: rgba(255,255,255,0.07);
+    border-radius: 99px; overflow: hidden;
+  }
+
+  .bar-fill {
+    height: 100%; width: 0%; border-radius: 99px;
+    transition: width 1.3s cubic-bezier(0.16, 1, 0.3, 1);
+    position: relative;
+  }
+
+  .bar-fill.rr  { background: linear-gradient(90deg, var(--accent2), var(--accent)); }
+  .bar-fill.kd  { background: linear-gradient(90deg, rgba(110,216,200,0.6), var(--accent2)); }
+
+  .bar-fill::after {
+    content: '';
+    position: absolute; right: 0; top: -1px; bottom: -1px;
+    width: 6px; background: white;
+    border-radius: 99px; opacity: 0.5;
+  }
+
+  .stat-num {
+    font-family: 'Syne', sans-serif; font-size: 17px; font-weight: 700;
+    color: var(--text); flex-shrink: 0;
+    min-width: 46px; text-align: right; letter-spacing: 0.5px;
+  }
+  .stat-num span { font-family: 'DM Sans', sans-serif; font-size: 10px; color: var(--muted); font-weight: 400; }
+
+  .streak-row { display: flex; align-items: center; gap: 7px; }
+
+  .streak-tag { font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); flex-shrink: 0; }
+
+  .pips { display: flex; gap: 4px; flex: 1; }
+
+  .pip {
+    width: 16px; height: 5px; border-radius: 99px;
+    opacity: 0; transform: scale(0.4);
+    transition: opacity .25s, transform .25s;
+  }
+  .pip.w { background: var(--win);  box-shadow: 0 0 5px rgba(77,255,192,0.55); }
+  .pip.l { background: var(--loss); box-shadow: 0 0 5px rgba(255,85,119,0.45); }
+  .pip.on { opacity: 1; transform: none; }
+
+  .streak-badge {
+    font-family: 'Syne', sans-serif; font-size: 12px; font-weight: 700;
+    padding: 1px 7px; border-radius: 99px; flex-shrink: 0;
+  }
+  .streak-badge.w { color: var(--win);  background: rgba(77,255,192,0.10);  border: 1px solid rgba(77,255,192,0.22); }
+  .streak-badge.l { color: var(--loss); background: rgba(255,85,119,0.10); border: 1px solid rgba(255,85,119,0.22); }
+
+  /* rank-specific gem colors */
+  .gem-iron     { --g1: #8a9ba8; --g2: #b0c4cc; }
+  .gem-bronze   { --g1: #cd7f32; --g2: #e8a85a; }
+  .gem-silver   { --g1: #aab8c2; --g2: #dce6ea; }
+  .gem-gold     { --g1: #ffd700; --g2: #ffe86a; }
+  .gem-platinum { --g1: #4fc3c3; --g2: #7fe8e8; }
+  .gem-diamond  { --g1: #a78bfa; --g2: #c4b5fd; }
+  .gem-ascendant{ --g1: #34d399; --g2: #6ee7b7; }
+  .gem-immortal { --g1: #c8a0ff; --g2: #6ed8c8; }
+  .gem-radiant  { --g1: #fbbf24; --g2: #fde68a; }
+</style>
+</head>
+<body>
+
+<!-- OVERLAY CARD -->
+<div class="overlay" id="overlay">
+  <div class="card">
+    <div class="live" onclick="refresh()" title="Click to refresh">
+      <div class="live-dot" id="live-dot"></div>
+      <span class="live-label" id="live-label">Live</span>
+    </div>
+
+    <div class="rank-row">
+      <svg class="rank-gem" id="rank-gem" viewBox="0 0 50 50" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="g1" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#c8a0ff" id="gs1"/>
+            <stop offset="100%" stop-color="#6ed8c8" id="gs2"/>
+          </linearGradient>
+          <linearGradient id="g2" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="rgba(200,160,255,0.22)"/>
+            <stop offset="100%" stop-color="rgba(110,216,200,0.08)"/>
+          </linearGradient>
+        </defs>
+        <circle cx="25" cy="25" r="22" stroke="url(#g1)" stroke-width="1" fill="none" opacity="0.35"/>
+        <polygon points="25,7 43,25 25,43 7,25" fill="url(#g2)" stroke="url(#g1)" stroke-width="1.2"/>
+        <polygon points="25,14 36,25 25,36 14,25" fill="url(#g1)" opacity="0.18"/>
+        <circle cx="25" cy="25" r="4.5" fill="url(#g1)" opacity="0.92"/>
+        <circle cx="25" cy="25" r="2" fill="white" opacity="0.55"/>
+        <circle cx="25" cy="7"  r="1.6" fill="url(#g1)" opacity="0.7"/>
+        <circle cx="25" cy="43" r="1.6" fill="url(#g1)" opacity="0.7"/>
+        <circle cx="7"  cy="25" r="1.6" fill="url(#g1)" opacity="0.7"/>
+        <circle cx="43" cy="25" r="1.6" fill="url(#g1)" opacity="0.7"/>
+      </svg>
+      <div class="rank-labels">
+        <div class="rank-tier" id="rank-tier">—</div>
+        <div class="rank-sub"  id="rank-sub">—</div>
+      </div>
+    </div>
+
+    <hr>
+
+    <div class="stat-row">
+      <div class="stat-tag">RR</div>
+      <div class="bar-track"><div class="bar-fill rr" id="rr-fill"></div></div>
+      <div class="stat-num" id="rr-num">—<span> rr</span></div>
+    </div>
+
+    <div class="stat-row">
+      <div class="stat-tag">KD</div>
+      <div class="bar-track"><div class="bar-fill kd" id="kd-fill"></div></div>
+      <div class="stat-num" id="kd-num">—<span> k/d</span></div>
+    </div>
+
+    <div class="streak-row">
+      <div class="streak-tag">Streak</div>
+      <div class="pips" id="pips"></div>
+      <div class="streak-badge w" id="badge">—</div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ── Hardcoded player ───────────────────────────────────────────
+  const PLAYER = { name: 'qMoby', tag: 'goat', region: 'na' };
+  const REFRESH_MS = 3 * 60 * 1000;
+  let refreshTimer = null;
+
+  const GEM_COLORS = {
+    iron:      ['#8a9ba8','#b0c4cc'],
+    bronze:    ['#cd7f32','#e8a85a'],
+    silver:    ['#aab8c2','#dce6ea'],
+    gold:      ['#ffd700','#ffe86a'],
+    platinum:  ['#4fc3c3','#7fe8e8'],
+    diamond:   ['#a78bfa','#c4b5fd'],
+    ascendant: ['#34d399','#6ee7b7'],
+    immortal:  ['#c8a0ff','#6ed8c8'],
+    radiant:   ['#fbbf24','#fde68a'],
+  };
+
+  // ── Fetch ──────────────────────────────────────────────────────
+  async function fetchAndRender() {
+    setLiveState('fetching');
+    try {
+      const { name, tag, region } = PLAYER;
+      const base = 'https://api.henrikdev.xyz/valorant/v3';
+      const headers = { 'Authorization': 'HDEV-add893c4-d264-419a-840b-b14d486d5b38' };
+      const [mmrRes, matchRes] = await Promise.all([
+        fetch(`${base}/mmr/${region}/${encodeURIComponent(name)}/${encodeURIComponent(tag)}`, { headers }),
+        fetch(`https://api.henrikdev.xyz/valorant/v1/mmr-history/${region}/${encodeURIComponent(name)}/${encodeURIComponent(tag)}`, { headers })
+      ]);
+      if (!mmrRes.ok) { setLiveState('error'); return; }
+      const mmr   = await mmrRes.json();
+      const match = matchRes.ok ? await matchRes.json() : null;
+      renderOverlay(mmr, match);
+      setLiveState('live');
+    } catch (e) {
+      setLiveState('error');
+    }
+  }
+
+  // ── Render ─────────────────────────────────────────────────────
+  function renderOverlay(mmr, matchHistory) {
+    const current = mmr?.data?.current_data || mmr?.data || {};
+    const tier    = (current.currenttierpatched || current.rank || 'Unranked').replace(/\s\d+$/, '').trim();
+    const tierNum = (current.currenttierpatched || '').match(/\d+$/)?.[0];
+    const rr      = current.ranking_in_tier ?? current.elo ?? 0;
+
+    document.getElementById('rank-tier').textContent = tier;
+    document.getElementById('rank-sub').textContent  = tierNum ? `Rank ${tierNum}` : (rr > 0 ? '' : 'Unranked');
+    document.getElementById('rr-num').innerHTML      = `${rr}<span> rr</span>`;
+
+    const tierKey = tier.toLowerCase().replace(/\s+\d+$/, '').trim();
+    const colors  = GEM_COLORS[tierKey] || GEM_COLORS.immortal;
+    document.getElementById('gs1').setAttribute('stop-color', colors[0]);
+    document.getElementById('gs2').setAttribute('stop-color', colors[1]);
+
+    setTimeout(() => {
+      document.getElementById('rr-fill').style.width = Math.min(100, rr) + '%';
+    }, 200);
+
+    const history = matchHistory?.data || [];
+    const recent  = history.slice(0, 5).reverse();
+
+    let kills = 0, deaths = 0, validMatches = 0;
+    recent.forEach(m => {
+      if (m.kills != null && m.deaths != null) { kills += m.kills; deaths += m.deaths; validMatches++; }
+    });
+    const kd = validMatches > 0 ? (kills / Math.max(1, deaths)).toFixed(2) : '—';
+    document.getElementById('kd-num').innerHTML = `${kd}<span> k/d</span>`;
+    setTimeout(() => {
+      const kdPct = kd !== '—' ? Math.min(100, (parseFloat(kd) / 3) * 100) : 0;
+      document.getElementById('kd-fill').style.width = kdPct + '%';
+    }, 300);
+
+    const pipsEl = document.getElementById('pips');
+    pipsEl.innerHTML = '';
+    const wins = recent.map(m => (m.movement || '').toLowerCase().includes('increase') || (m.rr_change || 0) > 0);
+    wins.forEach((win, i) => {
+      const p = document.createElement('div');
+      p.className = `pip ${win ? 'w' : 'l'}`;
+      pipsEl.appendChild(p);
+      setTimeout(() => p.classList.add('on'), 200 + i * 60);
+    });
+
+    let streak = 0, type = null;
+    for (let i = wins.length - 1; i >= 0; i--) {
+      if (type === null) type = wins[i];
+      if (wins[i] === type) streak++;
+      else break;
+    }
+    const badge = document.getElementById('badge');
+    if (wins.length === 0 || type === null) {
+      badge.textContent = '—'; badge.className = 'streak-badge w';
+    } else {
+      badge.textContent = `${type ? 'W' : 'L'}${streak}`;
+      badge.className   = `streak-badge ${type ? 'w' : 'l'}`;
+    }
+  }
+
+  // ── Helpers ────────────────────────────────────────────────────
+  function setLiveState(state) {
+    const dot   = document.getElementById('live-dot');
+    const label = document.getElementById('live-label');
+    dot.className = 'live-dot' + (state !== 'live' ? ` ${state}` : '');
+    label.textContent = state === 'fetching' ? 'Updating' : state === 'error' ? 'Error' : 'Live';
+  }
+
+  function scheduleRefresh() {
+    clearTimeout(refreshTimer);
+    refreshTimer = setTimeout(refresh, REFRESH_MS);
+  }
+
+  async function refresh() {
+    await fetchAndRender();
+    scheduleRefresh();
+  }
+
+  // ── Auto-start on load ─────────────────────────────────────────
+  fetchAndRender().then(scheduleRefresh);
+</script>
+</body>
+</html>
